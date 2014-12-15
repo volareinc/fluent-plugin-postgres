@@ -16,6 +16,7 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
   config_param :columns, :string, :default => nil
 
   config_param :format, :string, :default => "raw" # or json
+  config_param :force_encoding, :string, :default => nil
 
   attr_accessor :handler
 
@@ -67,8 +68,18 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
     handler = self.client
     handler.prepare("write", @sql)
     chunk.msgpack_each { |tag, time, data|
+      data = set_encoding(data) if @force_encoding
       handler.exec_prepared("write", data)
     }
     handler.close
   end
+
+  def set_encoding(record)
+    record.each_pair { |k, v|
+      if v.is_a?(String)
+        v.force_encoding(@force_encoding)
+      end
+    }
+  }
+
 end
