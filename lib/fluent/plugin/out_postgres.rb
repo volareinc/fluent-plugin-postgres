@@ -69,6 +69,7 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
     handler = self.client
     handler.prepare("write", @sql)
     chunk.msgpack_each { |tag, time, data|
+      data = set_encoding(data) if @force_encoding
       handler.exec_prepared("write", data)
     }
     handler.close
