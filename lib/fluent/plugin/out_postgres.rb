@@ -53,6 +53,7 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
   end
 
   def format(tag, time, record)
+    record = set_encoding(record) if @force_encoding
     [tag, time, @format_proc.call(tag, time, record)].to_msgpack
   end
 
@@ -68,7 +69,6 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
     handler = self.client
     handler.prepare("write", @sql)
     chunk.msgpack_each { |tag, time, data|
-      data = set_encoding(data) if @force_encoding
       handler.exec_prepared("write", data)
     }
     handler.close
