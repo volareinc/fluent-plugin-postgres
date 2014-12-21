@@ -23,6 +23,7 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
   def initialize
     super
     require 'pg'
+    require 'json'
   end
 
   # We don't currently support mysql's analogous json format
@@ -41,6 +42,11 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
     end
     if @columns and @sql
       raise Fluent::ConfigError, "both of columns and sql are specified, but specify one of them"
+    elsif @columns and @sql.nil?
+      keys = columns.split(",").map{|x| x.strip}
+      key_count = 1..keys.size()
+      place_holders = key_count.to_a.map {|x| '$'<<x.to_s}
+      @sql = "INSERT INTO " << @table << " (" << keys.join(",") << ") VALUES (" << place_holders.join(",") << ")"
     end
   end
 
@@ -66,13 +72,21 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
   end
 
   def write(chunk)
-    handler = self.client
-    handler.prepare("write", @sql)
-    chunk.msgpack_each { |tag, time, data|
-      data = set_encoding(data) if @force_encoding
-      handler.exec_prepared("write", data)
-    }
-    handler.close
+    begin
+      handler = self.client
+      handler.prepare("write", @sql)
+      chunk.msgpack_each { |tag, time, data|
+        data = set_encoding(data) if @force_encoding
+        data = JSON.parse(data).values if @format == 'json'
+        handler.exec_prepared("write", data)
+      }
+      $log.info "completed insert data into postgres. TABLE: #{@table}"
+    rescue PG::Error => e
+      $log.error "failed to insert data into postgres. TABLE: #{@table}", :error=>e.to_s
+      raise e
+    ensure
+      handler.close rescue nil if handler
+    end
   end
 
   def set_encoding(record)
