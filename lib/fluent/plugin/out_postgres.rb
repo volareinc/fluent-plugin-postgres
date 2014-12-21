@@ -81,6 +81,6 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
         v.force_encoding(@force_encoding)
       end
     }
-  }
+  end
 
 end
