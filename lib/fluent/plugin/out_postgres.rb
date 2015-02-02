@@ -40,9 +40,7 @@ class Fluent::PostgresOutput < Fluent::BufferedOutput
     if @columns.nil? and @sql.nil?
       raise Fluent::ConfigError, "columns or sql MUST be specified, but missing"
     end
-    if @columns and @sql
-      raise Fluent::ConfigError, "both of columns and sql are specified, but specify one of them"
-    elsif @columns and @sql.nil?
+    if @columns and @sql.nil?
       keys = columns.split(",").map{|x| x.strip}
       key_count = 1..keys.size()
       place_holders = key_count.to_a.map {|x| '$'<<x.to_s}
